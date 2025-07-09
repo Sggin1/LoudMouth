@@ -6,7 +6,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![Cross-Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](https://github.com/yourusername/LoudMouth)
 
-**✨ [Download Latest Release](https://github.com/yourusername/LoudMouth/releases) | 📖 [Documentation](./docs/) | 💬 [Issues](https://github.com/yourusername/LoudMouth/issues) | ☕ [Support Development](https://ko-fi.com/yourusername)**
+**✨ [Download Latest Release](https://github.com/Sggin1/LoudMouth/releases) | 📖 [Documentation](./docs/) | 💬 [Issues](https://github.com/Sggin1/LoudMouth/issues) | ☕ [Support Development](https://ko-fi.com/YOURKOFIUSERNAME)**
 
 ---
 
@@ -35,7 +35,7 @@
 ## 📦 Quick Start
 
 ### Option 1: Download Pre-built Binary
-1. Go to [Releases](https://github.com/yourusername/LoudMouth/releases)
+1. Go to [Releases](https://github.com/Sggin1/LoudMouth/releases)
 2. Download for your platform:
    - `LoudMouth-Windows.exe` for Windows
    - `LoudMouth-Linux` for Linux
@@ -44,7 +44,7 @@
 
 ### Option 2: Run from Source
 ```bash
-git clone https://github.com/yourusername/LoudMouth.git
+git clone https://github.com/Sggin1/LoudMouth.git
 cd LoudMouth
 pip install -r requirements.txt
 python main.py
@@ -86,7 +86,7 @@ Perfect for developers! Converts spoken words to code:
 
 We welcome contributions! Here's how to help:
 
-1. **🐛 Report Bugs** - Use the [Issues](https://github.com/yourusername/LoudMouth/issues) tab
+1. **🐛 Report Bugs** - Use the [Issues](https://github.com/Sggin1/LoudMouth/issues) tab
 2. **💡 Suggest Features** - We love new ideas!
 3. **🔧 Submit PRs** - Check our [Contributing Guide](CONTRIBUTING.md)
 4. **📖 Improve Docs** - Documentation is always appreciated
@@ -96,8 +96,8 @@ We welcome contributions! Here's how to help:
 LoudMouth is free and open source. If you find it useful, consider supporting:
 
 - ⭐ **Star this repository** (helps others discover it)
-- ☕ **[Buy me a coffee](https://ko-fi.com/yourusername)** (one-time support)
-- 💝 **[GitHub Sponsors](https://github.com/sponsors/yourusername)** (monthly support)
+- ☕ **[Buy me a coffee](https://ko-fi.com/sggin1)** (one-time support)
+- 💝 **[GitHub Sponsors](https://github.com/sponsors/Sggin1)** (monthly support)
 - 🐦 **Share on social media** (spread the word!)
 
 ## 📋 Roadmap
