@@ -21,9 +21,9 @@
 
 ## 📸 Screenshots
 
-![Main Interface](docs/screenshots/main-interface.png)
-![Settings Window](docs/screenshots/settings-window.png)
-![Technical Filter Demo](docs/screenshots/technical-filter.gif)
+![Main Interface](docs/screenshots/main.png)
+![Settings Window](docs/screenshots/settings.png)
+
 
 ## 🎯 Why LoudMouth?
 
