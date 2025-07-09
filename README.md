@@ -102,10 +102,12 @@ LoudMouth is free and open source. If you find it useful, consider supporting:
 
 ## 📋 Roadmap
 
-- [ ] **v1.1** - Custom vocabulary support
-- [ ] **v1.2** - Batch processing
-- [ ] **v1.3** - Plugin system
-- [ ] **v2.0** - Cloud sync (optional)
+- [ ] **v1.x** - two parallel pipeline
+- [ ] **v1.x** - button release routes audio to command buffer
+- [ ] **v1.x** - async command injection " 
+   spoken = "space 5, copy 7, enter , paste
+   Output: 'Space', 'Space', 'Space', 'Space', 'Space', 'Copy( next 7 chars)','enter', paste
+- [ ] **v2.x** - lightweight translucent UI overlay
 
 ## 🔧 Building from Source
 
@@ -133,4 +135,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Made with ❤️ for developers who value privacy and efficiency**
 
-[Report Bug](https://github.com/yourusername/LoudMouth/issues) · [Request Feature](https://github.com/yourusername/LoudMouth/issues) · [Discussions](https://github.com/yourusername/LoudMouth/discussions)
+[Report Bug](https://github.com/sggin1/LoudMouth/issues) · [Request Feature](https://github.com/sggin1/LoudMouth/issues) · [Discussions](https://github.com/sggin1/LoudMouth/discussions)
