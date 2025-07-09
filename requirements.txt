@@ -1,0 +1,23 @@
+# Core dependencies for LoudMouth Voice-to-Text Application
+
+# Audio processing and speech recognition
+openai-whisper>=20231117
+pyaudio>=0.2.14
+
+# Input capture and automation
+pynput>=1.7.6
+pyautogui>=0.9.54
+
+# Clipboard operations
+pyperclip>=1.8.2
+
+# Windows integration (Windows only)
+pywin32>=306; sys_platform == "win32"
+
+# Cross-platform dependencies
+requests>=2.31.0
+tqdm>=4.65.0
+
+# Optional: Alternative audio backends
+# soundfile>=0.12.1
+# ffmpeg-python>=0.2.0 
