@@ -151,25 +151,9 @@ class ModelManager:
             self.status_callback(message)
     
     def get_local_models(self) -> List[str]:
-        """Get list of locally available models"""
-        available = []
-        
-        # First, scan the local models directory for actual files
-        local_folder_models = self._scan_local_models()
-        
-        # Then check cache directory for standard models
-        all_models = self.get_all_models()
-        
-        for model_size in all_models:
-            if self.is_model_available(model_size):
-                available.append(model_size)
-        
-        # Ensure all models found in local folder are included
-        for model in local_folder_models:
-            if model not in available:
-                available.append(model)
-        
-        return available
+        """Get list of locally available models - only from models folder"""
+        # Only scan the local models directory
+        return self._scan_local_models()
     
     def get_missing_models(self) -> List[str]:
         """Get list of missing models (only standard models, not custom)"""
@@ -177,10 +161,9 @@ class ModelManager:
         return [m for m in self.available_models if m not in local]
     
     def is_model_available(self, model_size: str) -> bool:
-        """Check if specific model is available locally"""
-        # Check local models dir first, then cache
+        """Check if specific model is available locally - only in models folder"""
         local_path = os.path.join(self.local_models_dir, f"{model_size}.pt")
-        cache_path = os.path.join(self.cache_dir, f"{model_size}.pt")
+        return os.path.exists(local_path)
         cache_path_v3 = os.path.join(self.cache_dir, f"{model_size}-v3.pt")
         
         return (os.path.exists(local_path) or 
@@ -188,17 +171,11 @@ class ModelManager:
                 os.path.exists(cache_path_v3))
     
     def get_model_path(self, model_size: str) -> Optional[str]:
-        """Get full path to model file"""
+        """Get full path to model file - only from local models folder"""
         local_path = os.path.join(self.local_models_dir, f"{model_size}.pt")
-        cache_path = os.path.join(self.cache_dir, f"{model_size}.pt")
-        cache_path_v3 = os.path.join(self.cache_dir, f"{model_size}-v3.pt")
         
         if os.path.exists(local_path):
             return local_path
-        elif os.path.exists(cache_path):
-            return cache_path
-        elif os.path.exists(cache_path_v3):
-            return cache_path_v3
         return None
     
     def get_model_status(self) -> Dict:
@@ -348,17 +325,20 @@ class ModelManager:
         return f"⚠️  Model '{model_size}' ({info.get('size', 'unknown')}) not downloaded. App may freeze during download."
     
     def get_quick_status(self) -> str:
-        """Get quick status for UI display"""
-        local_models = self._scan_local_models()  # Only bundled models
+        """Get quick status for UI display - only count models in ./models/ folder"""
+        # Only scan local models folder (no cache)
+        local_models = self._scan_local_models()
         custom_count = len(self._scan_custom_models())
         
-        if len(local_models) == 0:
+        # Total is only what's in the models folder
+        total_available = len(local_models)
+        
+        if total_available == 0:
             return "❌ No models available"
         else:
-            model_text = f"{len(local_models)} model{'s' if len(local_models) != 1 else ''}"
-            if custom_count > 0:
-                model_text += f" + {custom_count} custom"
-            return f"✅ {model_text} ready" 
+            # Simple count - no breakdown of cached
+            model_text = f"{total_available} model{'s' if total_available != 1 else ''} ready"
+            return f"✅ {model_text}" 
     
     def cleanup(self):
         """Clean up model resources"""
