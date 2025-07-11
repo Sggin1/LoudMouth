@@ -20,8 +20,9 @@ except (ImportError, ValueError):
 class DownloaderWindow:
     """GUI for downloading Whisper models"""
     
-    def __init__(self, parent: Optional[tk.Widget] = None):
+    def __init__(self, parent: Optional[tk.Widget] = None, on_downloads_complete: Optional[callable] = None):
         self.parent = parent
+        self.on_downloads_complete = on_downloads_complete  # Callback for when downloads finish
         self.download_thread = None
         self.is_downloading = False
         
@@ -445,6 +446,13 @@ class DownloaderWindow:
         # Finish
         if self.progress_var.get() >= 100:
             self.status_var.set("✅ All downloads completed successfully!")
+            
+            # Call the callback if provided
+            if self.on_downloads_complete:
+                try:
+                    self.on_downloads_complete()
+                except Exception as e:
+                    print(f"Error in downloads complete callback: {e}")
         
         self.is_downloading = False
         self.download_btn.config(state='normal', text="Download Selected")

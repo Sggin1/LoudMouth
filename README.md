@@ -13,7 +13,7 @@
 ## 🚀 Features
 
 - **🔒 100% Offline** - No internet required, complete privacy
-- **⚡ Lightning Fast** - Optimized for short audio clips
+- **⚡ Fast** - Optimized for short audio clips
 - **🎯 Developer-Focused** - Technical filter converts "underscore" → "_", "dot py" → ".py"
 - **🎛️ Customizable** - Multiple models, hotkeys, and settings
 - **🖥️ Cross-Platform** - Windows, macOS, Linux support
@@ -102,6 +102,7 @@ LoudMouth is free and open source. If you find it useful, consider supporting:
 
 ## 📋 Roadmap
 
+- [x] **v1.1** - better key bind system signle or combo , removed L-click from bind list
 - [ ] **v1.x** - two parallel pipeline
 - [ ] **v1.x** - button release routes audio to command buffer
 - [ ] **v1.x** - async command injection " 

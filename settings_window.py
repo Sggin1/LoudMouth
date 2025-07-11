@@ -4,7 +4,7 @@
 # Dependencies: tkinter, ttk
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from typing import Callable, Optional
 
 
@@ -118,7 +118,7 @@ class SettingsWindow:
         # Current hotkey display
         current_hotkey = self.settings.get_hotkey_display_text()
         self.hotkey_label = tk.Label(hotkey_frame, text=f"Current: {current_hotkey}",
-                                    fg='#00ccff', bg='#1a1a1a', font=('Arial', 9))
+                                    fg='#00ccff', bg='#1a1a1a', font=('Consolas', 10, 'bold'))
         self.hotkey_label.pack(pady=5)
         
         # Change hotkey button
@@ -410,62 +410,27 @@ class SettingsWindow:
             self.model_size_var.set("base") # Default to base (more stable than small)
     
     def _change_hotkey(self):
-        """Change hotkey configuration"""
-        dialog = tk.Toplevel(self.window)
-        dialog.title("Set Hotkey")
-        dialog.geometry("300x150")
-        dialog.configure(bg='#1a1a1a')
-        dialog.attributes('-topmost', True)
-        dialog.resizable(False, False)
+        """Change hotkey using dedicated capture module"""
+        try:
+            from hotkey_capture import show_hotkey_capture
+        except ImportError:
+            # Fallback import path
+            from .hotkey_capture import show_hotkey_capture
         
-        # Center on settings window
-        x = self.window.winfo_x() + 50
-        y = self.window.winfo_y() + 50
-        dialog.geometry(f"300x150+{x}+{y}")
+        def on_hotkey_changed():
+            """Callback when hotkey is changed"""
+            # Update the display
+            current_hotkey = self.settings.get_hotkey_display_text()
+            self.hotkey_label.config(text=f"Current: {current_hotkey}")
+            
+            # Call main callback if provided
+            if self.callback:
+                self.callback()
         
-        # Make modal
-        dialog.transient(self.window)
-        dialog.grab_set()
-        
-        # Instructions
-        label = tk.Label(dialog, text="Press a key or click a mouse button...",
-                        fg='white', bg='#1a1a1a', font=('Arial', 10))
-        label.pack(pady=30)
-        
-        # Status
-        status_label = tk.Label(dialog, text="Waiting for input...",
-                               fg='#888888', bg='#1a1a1a', font=('Arial', 8))
-        status_label.pack(pady=10)
-        
-        # Capture new hotkey
-        def on_hotkey_captured(hotkey_config, display_name):
-            try:
-                print(f"Hotkey captured: {hotkey_config}, display: {display_name}")  # Debug
-                
-                # Save the hotkey using the new API that takes the full config
-                success = self.settings.set_hotkey(hotkey_config)
-                print(f"Hotkey save success: {success}")  # Debug
-                
-                # Update display
-                self.hotkey_label.config(text=f"Current: {display_name}")
-                
-                # Notify callback to apply changes immediately
-                if self.callback:
-                    self.callback()
-                
-                dialog.destroy()
-                
-            except Exception as e:
-                print(f"Error setting hotkey: {e}")
-                dialog.destroy()
-        
-        stop_capture = self.hotkey_manager.capture_new_hotkey(on_hotkey_captured)
-        
-        def on_dialog_close():
-            stop_capture()
-            dialog.destroy()
-        
-        dialog.protocol("WM_DELETE_WINDOW", on_dialog_close)
+        # Show the hotkey capture dialog
+        show_hotkey_capture(self.window, self.settings, on_hotkey_changed)
+    
+
     
     def _save_settings(self):
         """Apply all settings (but keep window open)"""

@@ -67,7 +67,14 @@ class V3PTTApp:
             self.audio_handler.set_device(self.settings.get_device_index())
             self.hotkey_manager.set_hotkey(self.settings.get_hotkey())
             self.ui.update_hotkey_display(self.settings.get_hotkey_display_text())
-            self.ui.set_always_on_top(self.settings.get_always_on_top())
+            
+            # Only update always_on_top if it actually changed
+            # This prevents window jumping when settings are applied
+            new_always_on_top = self.settings.get_always_on_top()
+            current_always_on_top = self.ui.root.attributes('-topmost')
+            if new_always_on_top != current_always_on_top:
+                self.ui.set_always_on_top(new_always_on_top)
+            
             self.command_executor.set_type_delay(self.settings.get_type_delay())
             
             # Apply mic mute state and update UI
@@ -212,21 +219,22 @@ class V3PTTApp:
     def update_model_status(self):
         """Update model status in UI"""
         try:
-            # Get current model info
-            current_model = self.settings.get_whisper_model_size()
+            # Get model status
             model_status = self.audio_handler.get_model_quick_status()
             
-            # Combine current model with status
-            if "✅" in model_status:
-                status_with_model = f"✅ {current_model} active • {model_status}"
-            else:
-                status_with_model = f"⚠️ {current_model} • {model_status}"
-                
-            self.ui.update_model_status(status_with_model)
+            # Update UI with simple status
+            self.ui.update_model_status(model_status)
         except Exception as e:
-            error_status = f"❌ Model status error: {str(e)}"
-            print(error_status)
-            self.ui.update_model_status(error_status)
+            # Don't show error in UI, just log it
+            print(f"Model status update error: {e}")
+            # Show default status
+            try:
+                # Try to at least show current model
+                current_model = self.settings.get_whisper_model_size()
+                self.ui.update_model_status(f"✅ {current_model} ready")
+            except:
+                # Fallback to generic message
+                self.ui.update_model_status("✅ Model ready")
     
     def run(self):
         """Run the application"""
