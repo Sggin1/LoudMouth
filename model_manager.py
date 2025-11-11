@@ -164,11 +164,6 @@ class ModelManager:
         """Check if specific model is available locally - only in models folder"""
         local_path = os.path.join(self.local_models_dir, f"{model_size}.pt")
         return os.path.exists(local_path)
-        cache_path_v3 = os.path.join(self.cache_dir, f"{model_size}-v3.pt")
-        
-        return (os.path.exists(local_path) or 
-                os.path.exists(cache_path) or 
-                os.path.exists(cache_path_v3))
     
     def get_model_path(self, model_size: str) -> Optional[str]:
         """Get full path to model file - only from local models folder"""

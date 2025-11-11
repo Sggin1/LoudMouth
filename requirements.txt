@@ -11,12 +11,14 @@ pyautogui>=0.9.54
 # Clipboard operations
 pyperclip>=1.8.2
 
-# Windows integration (Windows only)
+# Windows integration (Windows only - optional for enhanced features)
+# Note: Application works on all platforms, but some features use Windows APIs when available
 pywin32>=306; sys_platform == "win32"
 
 # Cross-platform dependencies
 requests>=2.31.0
 tqdm>=4.65.0
+numpy>=1.24.0
 
 # Optional: Alternative audio backends
 # soundfile>=0.12.1
