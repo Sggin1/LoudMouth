@@ -7,7 +7,18 @@ from typing import List, Dict, Any, Optional
 import pyautogui
 import time
 import os
-import win32gui
+import sys
+
+# Platform-specific imports
+try:
+    if sys.platform == 'win32':
+        import win32gui
+        HAS_WIN32 = True
+    else:
+        HAS_WIN32 = False
+except ImportError:
+    HAS_WIN32 = False
+
 from text_normalizer import text_normalizer
 
 
@@ -122,11 +133,11 @@ class CommandExecutor:
             return False
     
     def _get_window_class(self, window_title: str) -> str:
-        """Get the class name of a window for better targeting"""
+        """Get the class name of a window for better targeting (Windows only)"""
+        if not HAS_WIN32:
+            return ""
+
         try:
-            import win32gui
-            import win32con
-            
             def enum_windows_proc(hwnd, param):
                 if win32gui.IsWindowVisible(hwnd):
                     title = win32gui.GetWindowText(hwnd)
@@ -134,12 +145,12 @@ class CommandExecutor:
                         class_name = win32gui.GetClassName(hwnd)
                         param.append(class_name)
                 return True
-            
+
             window_classes = []
             win32gui.EnumWindows(enum_windows_proc, window_classes)
             return window_classes[0] if window_classes else ""
-            
-        except (ImportError, OSError, AttributeError) as e:
+
+        except (OSError, AttributeError) as e:
             print(f"Window class detection error: {e}")
             return ""
         except Exception as e:
@@ -196,16 +207,20 @@ class CommandExecutor:
             return error_msg
     
     def _detect_active_text_area(self):
-        """Detect if there's an active text input area"""
+        """Detect if there's an active text input area (Windows-specific, falls back to simple detection)"""
+        # Use simple fallback on non-Windows platforms
+        if not HAS_WIN32:
+            return self._simple_text_area_fallback()
+
         try:
             # Get the currently focused window
             hwnd = win32gui.GetForegroundWindow()
             if not hwnd:
                 return self._simple_text_area_fallback()
-            
+
             # Get window class name to determine if it's a text input
             class_name = win32gui.GetClassName(hwnd)
-            
+
             # Common text input window classes
             text_classes = [
                 'Edit',           # Standard Windows text box
@@ -218,27 +233,27 @@ class CommandExecutor:
                 'Notepad',        # Notepad
                 'WordPadClass',   # WordPad
             ]
-            
+
             # Check if the focused window is a text input
             if any(text_class in class_name for text_class in text_classes):
                 return True
-            
+
             # Additional check for web browsers and modern apps
             window_title = win32gui.GetWindowText(hwnd)
-            
+
             # Check for common text editor applications
             text_apps = [
-                'notepad', 'wordpad', 'code', 'sublime', 'atom', 
+                'notepad', 'wordpad', 'code', 'sublime', 'atom',
                 'vim', 'emacs', 'nano', 'textedit', 'word', 'excel',
                 'chrome', 'firefox', 'edge', 'brave', 'opera'
             ]
-            
+
             if any(app in window_title.lower() for app in text_apps):
                 return True
-            
+
             # Fall back to simple detection
             return self._simple_text_area_fallback()
-                
+
         except Exception as e:
             # If Windows API detection fails, use simple fallback
             print(f"Advanced text area detection failed: {e}")

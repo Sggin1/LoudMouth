@@ -456,12 +456,19 @@ class AudioHandler:
                 self.model_manager.cleanup()
             except Exception as e:
                 print(f"Error cleaning up model manager: {e}")
-        
-        # Clean up persistent PyAudio
+
+        # Clean up persistent audio level stream
         try:
-            if hasattr(self, 'persistent_pyaudio') and self.persistent_pyaudio:
-                self.persistent_pyaudio.terminate()
-                self.persistent_pyaudio = None
+            self._reset_level_stream()
+            print("Level stream cleaned up")
+        except Exception as e:
+            print(f"Error cleaning up level stream: {e}")
+
+        # Clean up persistent PyAudio (level_pyaudio)
+        try:
+            if hasattr(self, 'level_pyaudio') and self.level_pyaudio:
+                self.level_pyaudio.terminate()
+                self.level_pyaudio = None
                 print("Persistent PyAudio terminated")
         except Exception as e:
             print(f"Error terminating persistent PyAudio: {e}")

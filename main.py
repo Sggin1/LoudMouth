@@ -149,34 +149,25 @@ class V3PTTApp:
             try:
                 clipboard_text = clean_text.strip()
                 print(f"Copying to clipboard: '{clipboard_text}'")
-                
-                # Use a more robust clipboard copy method
-                import subprocess
-                subprocess.run(['powershell', '-c', f'Set-Clipboard -Value "{clipboard_text}"'], 
-                             check=True, capture_output=True)
-                
-                # Verify with pyperclip
+
+                # Use pyperclip for cross-platform clipboard support
+                pyperclip.copy(clipboard_text)
+
+                # Verify clipboard was set correctly
                 import time
-                time.sleep(0.1)  # Small delay to ensure clipboard is updated
+                time.sleep(0.05)  # Small delay to ensure clipboard is updated
                 clipboard_content = pyperclip.paste()
-                
+
                 if clipboard_content == clipboard_text:
                     print("✅ Clipboard copy successful")
                     clipboard_success = True
                 else:
-                    print("❌ Clipboard verification failed, trying fallback...")
-                    # Fallback to pyperclip
-                    pyperclip.copy(clipboard_text)
-                    clipboard_success = True
-                
+                    print("⚠️ Clipboard verification mismatch, but copy attempted")
+                    clipboard_success = True  # Still consider it a success
+
             except Exception as e:
                 print(f"❌ Clipboard error: {e}")
-                # Fallback to pyperclip if PowerShell fails
-                try:
-                    pyperclip.copy(clipboard_text)
-                    clipboard_success = True
-                except Exception:
-                    clipboard_success = False
+                clipboard_success = False
         
         # Execute text and commands - this returns a status message, not text to type
         result = self.command_executor.execute_text_and_commands(clean_text, commands)
