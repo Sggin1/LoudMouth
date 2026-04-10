@@ -457,21 +457,22 @@ class AudioHandler:
             except Exception as e:
                 print(f"Error cleaning up model manager: {e}")
         
-        # Clean up persistent PyAudio
+        # Clean up persistent level monitoring stream and PyAudio
+        self._reset_level_stream()
         try:
-            if hasattr(self, 'persistent_pyaudio') and self.persistent_pyaudio:
-                self.persistent_pyaudio.terminate()
-                self.persistent_pyaudio = None
-                print("Persistent PyAudio terminated")
+            if hasattr(self, 'level_pyaudio') and self.level_pyaudio:
+                self.level_pyaudio.terminate()
+                self.level_pyaudio = None
+                print("Level PyAudio terminated")
         except Exception as e:
-            print(f"Error terminating persistent PyAudio: {e}")
+            print(f"Error terminating level PyAudio: {e}")
         
         # Close any open file descriptors
         if hasattr(self, 'open_file_descriptors'):
             for fd in self.open_file_descriptors:
                 try:
                     os.close(fd)
-                except:
+                except (OSError, ValueError):
                     pass
             self.open_file_descriptors.clear()
         

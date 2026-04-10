@@ -7,8 +7,14 @@ from typing import List, Dict, Any, Optional
 import pyautogui
 import time
 import os
-import win32gui
 from text_normalizer import text_normalizer
+
+# win32gui is only available on Windows
+try:
+    import win32gui
+    HAS_WIN32 = True
+except ImportError:
+    HAS_WIN32 = False
 
 
 class CommandParser:
@@ -123,10 +129,9 @@ class CommandExecutor:
     
     def _get_window_class(self, window_title: str) -> str:
         """Get the class name of a window for better targeting"""
+        if not HAS_WIN32:
+            return ""
         try:
-            import win32gui
-            import win32con
-            
             def enum_windows_proc(hwnd, param):
                 if win32gui.IsWindowVisible(hwnd):
                     title = win32gui.GetWindowText(hwnd)
@@ -134,16 +139,13 @@ class CommandExecutor:
                         class_name = win32gui.GetClassName(hwnd)
                         param.append(class_name)
                 return True
-            
+
             window_classes = []
             win32gui.EnumWindows(enum_windows_proc, window_classes)
             return window_classes[0] if window_classes else ""
-            
-        except (ImportError, OSError, AttributeError) as e:
+
+        except (OSError, AttributeError) as e:
             print(f"Window class detection error: {e}")
-            return ""
-        except Exception as e:
-            print(f"Unexpected window class error: {e}")
             return ""
     
     def _is_text_editor_window(self, class_name: str) -> bool:
@@ -197,88 +199,39 @@ class CommandExecutor:
     
     def _detect_active_text_area(self):
         """Detect if there's an active text input area"""
+        if not HAS_WIN32:
+            # On non-Windows platforms, assume text area is available
+            return True
         try:
-            # Get the currently focused window
             hwnd = win32gui.GetForegroundWindow()
             if not hwnd:
-                return self._simple_text_area_fallback()
-            
-            # Get window class name to determine if it's a text input
+                return True
+
             class_name = win32gui.GetClassName(hwnd)
-            
-            # Common text input window classes
+
             text_classes = [
-                'Edit',           # Standard Windows text box
-                'RichEdit',       # Rich text editor
-                'RichEdit20A',    # Rich text editor variant
-                'RichEdit20W',    # Rich text editor variant
-                'TMemo',          # Delphi memo
-                'TEdit',          # Delphi edit
-                'Chrome_WidgetWin_1',  # Chrome/Edge text areas
-                'Notepad',        # Notepad
-                'WordPadClass',   # WordPad
+                'Edit', 'RichEdit', 'RichEdit20A', 'RichEdit20W',
+                'TMemo', 'TEdit', 'Chrome_WidgetWin_1', 'Notepad', 'WordPadClass',
             ]
-            
-            # Check if the focused window is a text input
+
             if any(text_class in class_name for text_class in text_classes):
                 return True
-            
-            # Additional check for web browsers and modern apps
+
             window_title = win32gui.GetWindowText(hwnd)
-            
-            # Check for common text editor applications
             text_apps = [
-                'notepad', 'wordpad', 'code', 'sublime', 'atom', 
+                'notepad', 'wordpad', 'code', 'sublime', 'atom',
                 'vim', 'emacs', 'nano', 'textedit', 'word', 'excel',
                 'chrome', 'firefox', 'edge', 'brave', 'opera'
             ]
-            
+
             if any(app in window_title.lower() for app in text_apps):
                 return True
-            
-            # Fall back to simple detection
-            return self._simple_text_area_fallback()
-                
-        except Exception as e:
-            # If Windows API detection fails, use simple fallback
-            print(f"Advanced text area detection failed: {e}")
-            return self._simple_text_area_fallback()
-    
-    def _simple_text_area_fallback(self):
-        """Simple fallback text area detection"""
-        try:
-            # Store current clipboard content
-            import pyperclip
-            original_clipboard = ""
-            try:
-                original_clipboard = pyperclip.paste()
-            except:
-                pass
-            
-            # Try to select all text (Ctrl+A) to see if there's a text area
-            pyautogui.hotkey('ctrl', 'a')
-            time.sleep(0.1)
-            
-            # Try to copy to see if anything was selected
-            pyautogui.hotkey('ctrl', 'c')
-            time.sleep(0.1)
-            
-            # Check if clipboard changed (indicating text was selected)
-            try:
-                current_clipboard = pyperclip.paste()
-                has_text_area = current_clipboard != original_clipboard
-                
-                # Restore original clipboard
-                pyperclip.copy(original_clipboard)
-                
-                return has_text_area
-            except:
-                # If clipboard detection fails, assume there's a text area
-                return True
-                
-        except Exception as e:
-            # If all detection fails, assume there's a text area to avoid blocking
-            print(f"Simple text area detection failed: {e}")
+
+            # Default to True to avoid blocking text input
+            return True
+
+        except (OSError, AttributeError) as e:
+            print(f"Text area detection failed: {e}")
             return True
     
     def _disable_system_sounds(self):

@@ -294,13 +294,13 @@ class UIManager:
         self.header_frame.bind('<B1-Motion>', self._drag_window)
         
         # Create a frame container for the icon (better event handling)
-        icon_frame = tk.Frame(self.header_frame, bg='#2d2d2d', cursor='hand2')
-        icon_frame.pack(fill='both', expand=True, padx=1, pady=1)
+        self.icon_frame = tk.Frame(self.header_frame, bg='#2d2d2d', cursor='hand2')
+        self.icon_frame.pack(fill='both', expand=True, padx=1, pady=1)
         
         # Create the icon label inside the frame
         # Use simple text that works on all Windows systems
         self.icon_button = tk.Label(
-            icon_frame,
+            self.icon_frame,
             text="MIC",
             font=('Arial', 11, 'bold'),  # Slightly larger font
             bg='#2d2d2d',
@@ -317,7 +317,7 @@ class UIManager:
             return "break"
         
         # Bind double-click to restore window (simpler, more reliable)
-        clickable_widgets = [icon_frame, self.icon_button, self.header_frame, self.root]
+        clickable_widgets = [self.icon_frame, self.icon_button, self.header_frame, self.root]
         for widget in clickable_widgets:
             widget.bind('<Double-Button-1>', on_double_click)
             print(f"Bound double-click restore to {widget}")
@@ -352,11 +352,13 @@ class UIManager:
         self.main_frame.configure(relief='raised', bd=1)
         self.header_frame.configure(height=30, bg='#2d2d2d')
         
-        # Remove the temporary icon button
+        # Remove the temporary icon button and frame
         if hasattr(self, 'icon_button'):
             self.icon_button.destroy()
             delattr(self, 'icon_button')
-            print("Removed temporary icon button")  # Debug
+        if hasattr(self, 'icon_frame'):
+            self.icon_frame.destroy()
+            delattr(self, 'icon_frame')
         
         # Remove escape key binding
         self.root.unbind('<Escape>')

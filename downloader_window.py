@@ -363,26 +363,31 @@ class DownloaderWindow:
     
     def _update_model_status(self):
         """Update model availability status"""
-        def update_status():
+        def fetch_status():
             model_status = self.model_manager.get_model_status()
             model_locations = model_status.get('model_locations', {})
-            
-            for model_name in self.model_info.keys():
-                status_label = getattr(self, f"{model_name}_status_label")
-                
-                if model_name in model_locations:
-                    location = model_locations[model_name]
-                    if location == 'bundled':
-                        status_label.config(text="✅ Bundled", fg='#00ff00')
-                    elif location == 'cached':
-                        status_label.config(text="✅ Cached", fg='#00ccff')
-                    elif location == 'custom':
-                        status_label.config(text="🔧 Custom", fg='#ffcc00')
-                else:
-                    status_label.config(text="🔽 Available", fg='#00aaff')
-        
-        # Run in thread to avoid blocking UI
-        threading.Thread(target=update_status, daemon=True).start()
+            # Schedule UI update on main thread
+            self.window.after(0, lambda: self._apply_model_status(model_locations))
+
+        # Run fetch in thread to avoid blocking UI
+        threading.Thread(target=fetch_status, daemon=True).start()
+
+    def _apply_model_status(self, model_locations):
+        """Apply model status to UI labels (must be called from main thread)"""
+        for model_name in self.model_info.keys():
+            status_label = getattr(self, f"{model_name}_status_label", None)
+            if not status_label:
+                continue
+            if model_name in model_locations:
+                location = model_locations[model_name]
+                if location == 'bundled':
+                    status_label.config(text="✅ Bundled", fg='#00ff00')
+                elif location == 'cached':
+                    status_label.config(text="✅ Cached", fg='#00ccff')
+                elif location == 'custom':
+                    status_label.config(text="🔧 Custom", fg='#ffcc00')
+            else:
+                status_label.config(text="🔽 Available", fg='#00aaff')
     
     def _select_all(self):
         """Select all models"""
@@ -420,44 +425,38 @@ class DownloaderWindow:
         """Download selected models"""
         models_dir = self.model_manager.local_models_dir
         os.makedirs(models_dir, exist_ok=True)
-        
+
         total_models = len(selected_models)
-        
+
         for i, model_name in enumerate(selected_models):
             try:
-                # Update status
                 model_size = self.model_info[model_name]['size']
-                self.status_var.set(f"Downloading {model_name} ({model_size}) from OpenAI/Whisper... ({i+1}/{total_models})")
-                self.progress_var.set((i / total_models) * 100)
-                
-                # Download model
+                self.window.after(0, lambda ms=model_size, mn=model_name, idx=i: (
+                    self.status_var.set(f"Downloading {mn} ({ms}) from OpenAI/Whisper... ({idx+1}/{total_models})"),
+                    self.progress_var.set((idx / total_models) * 100)
+                ))
+
                 model = whisper.load_model(model_name, download_root=models_dir, device="cpu")
-                
-                # Clear memory
                 del model
-                
-                # Update progress
-                self.progress_var.set(((i + 1) / total_models) * 100)
-                
+
+                self.window.after(0, lambda idx=i: self.progress_var.set(((idx + 1) / total_models) * 100))
+
             except Exception as e:
-                self.status_var.set(f"Error downloading {model_name}: {str(e)}")
+                self.window.after(0, lambda mn=model_name, err=e: self.status_var.set(f"Error downloading {mn}: {str(err)}"))
                 break
-        
-        # Finish
-        if self.progress_var.get() >= 100:
-            self.status_var.set("✅ All downloads completed successfully!")
-            
-            # Call the callback if provided
-            if self.on_downloads_complete:
-                try:
-                    self.on_downloads_complete()
-                except Exception as e:
-                    print(f"Error in downloads complete callback: {e}")
-        
-        self.is_downloading = False
-        self.download_btn.config(state='normal', text="Download Selected")
-        
-        # Update model status
+
+        def _finish():
+            if self.progress_var.get() >= 100:
+                self.status_var.set("✅ All downloads completed successfully!")
+                if self.on_downloads_complete:
+                    try:
+                        self.on_downloads_complete()
+                    except Exception as e:
+                        print(f"Error in downloads complete callback: {e}")
+            self.is_downloading = False
+            self.download_btn.config(state='normal', text="Download Selected")
+
+        self.window.after(0, _finish)
         self.window.after(1000, self._update_model_status)
     
     def _on_close(self):
