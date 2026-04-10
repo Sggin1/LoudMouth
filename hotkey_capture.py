@@ -134,26 +134,11 @@ class HotkeyCapture:
         # Bottom button row
         bottom_frame = tk.Frame(main_frame, bg='#2b2b2b')
         bottom_frame.pack(pady=3)
-        
-        # Finished button
-        finished_btn = tk.Button(
+
+        # Close button
+        close_btn = tk.Button(
             bottom_frame,
-            text="Finished",
-            command=self._close_dialog,
-            bg='#9C27B0',
-            fg='white',
-            font=('Arial', 9, 'bold'),
-            width=8,
-            height=1,
-            relief='flat',
-            cursor='hand2'
-        )
-        finished_btn.pack(side='left', padx=2)
-        
-        # Exit button
-        exit_btn = tk.Button(
-            bottom_frame,
-            text="Exit",
+            text="Close",
             command=self._close_dialog,
             bg='#f44336',
             fg='white',
@@ -163,7 +148,7 @@ class HotkeyCapture:
             relief='flat',
             cursor='hand2'
         )
-        exit_btn.pack(side='left', padx=2)
+        close_btn.pack(side='left', padx=2)
         
     def _start_single_capture(self):
         """Start single key capture"""
@@ -262,14 +247,14 @@ class HotkeyCapture:
         if self.key_listener:
             try:
                 self.key_listener.stop()
-            except:
+            except (RuntimeError, OSError):
                 pass
             self.key_listener = None
-            
+
         if self.mouse_listener:
             try:
                 self.mouse_listener.stop()
-            except:
+            except (RuntimeError, OSError):
                 pass
             self.mouse_listener = None
             
@@ -346,12 +331,11 @@ class HotkeyCapture:
             if hasattr(key, 'char') and key.char:
                 return key.char.lower()
             elif hasattr(key, 'name'):
-                # Map special keys
                 key_mapping = {
                     'space': 'space',
                     'ctrl_l': 'ctrl',
                     'ctrl_r': 'ctrl',
-                    'alt_l': 'alt', 
+                    'alt_l': 'alt',
                     'alt_r': 'alt',
                     'shift_l': 'shift',
                     'shift_r': 'shift',
@@ -364,7 +348,7 @@ class HotkeyCapture:
                 }
                 return key_mapping.get(key.name.lower(), key.name.lower())
             return None
-        except:
+        except (AttributeError, TypeError):
             return None
     
     def _get_mouse_button_name(self, button):
@@ -379,7 +363,7 @@ class HotkeyCapture:
             elif button == mouse.Button.x2:
                 return 'x2_click'
             return None
-        except:
+        except (AttributeError, TypeError):
             return None
             
     def _update_status(self, text, color='#cccccc'):

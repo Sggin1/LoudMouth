@@ -92,14 +92,14 @@ class ModelManager:
                                 size_str = f"{file_size//(1024*1024)}MB"
                             else:
                                 size_str = f"{file_size//(1024*1024*1024):.1f}GB"
-                        except:
+                        except (OSError, ValueError):
                             size_str = "Unknown"
-                        
+
                         self.model_info[model_name] = {
                             'size': size_str,
                             'desc': 'Custom model'
                         }
-        
+
         return custom_models
     
     def _scan_local_models(self) -> List[str]:
@@ -123,9 +123,9 @@ class ModelManager:
                                 size_str = f"{file_size//(1024*1024)}MB"
                             else:
                                 size_str = f"{file_size//(1024*1024*1024):.1f}GB"
-                        except:
+                        except (OSError, ValueError):
                             size_str = "Unknown"
-                        
+
                         # Determine if it's a standard model or custom
                         if model_name in self.available_models:
                             desc = self.model_info.get(model_name, {}).get('desc', 'Whisper model')
@@ -161,13 +161,13 @@ class ModelManager:
         return [m for m in self.available_models if m not in local]
     
     def is_model_available(self, model_size: str) -> bool:
-        """Check if specific model is available locally - only in models folder"""
+        """Check if specific model is available locally"""
         local_path = os.path.join(self.local_models_dir, f"{model_size}.pt")
-        return os.path.exists(local_path)
+        cache_path = os.path.join(self.cache_dir, f"{model_size}.pt")
         cache_path_v3 = os.path.join(self.cache_dir, f"{model_size}-v3.pt")
-        
-        return (os.path.exists(local_path) or 
-                os.path.exists(cache_path) or 
+
+        return (os.path.exists(local_path) or
+                os.path.exists(cache_path) or
                 os.path.exists(cache_path_v3))
     
     def get_model_path(self, model_size: str) -> Optional[str]:
@@ -214,7 +214,7 @@ class ModelManager:
         try:
             response = requests.get('https://httpbin.org/get', timeout=timeout)
             return response.status_code == 200
-        except:
+        except (requests.RequestException, OSError):
             return False
     
     def estimate_download_time(self, model_size: str, connection_speed: str = 'medium') -> str:
@@ -358,7 +358,7 @@ class ModelManager:
                     import torch
                     if torch.cuda.is_available():
                         torch.cuda.empty_cache()
-                except:
+                except (ImportError, RuntimeError):
                     pass
                 
                 print("Model cleanup complete")
