@@ -21,17 +21,45 @@ class SettingsWindow:
         # Create window
         self.window = tk.Toplevel(parent)
         self.window.title("Settings")
-        self.window.geometry("400x580")  # Even number, room for 6 total options (3 rows × 2)
+
+        # Dark theme for ttk widgets (Combobox, etc.)
+        self._style = ttk.Style(self.window)
+        try:
+            self._style.theme_use('clam')
+        except tk.TclError:
+            pass
+        self._style.configure('Dark.TCombobox',
+                              fieldbackground='#2a2a2a',
+                              background='#2a2a2a',
+                              foreground='white',
+                              arrowcolor='white',
+                              bordercolor='#333',
+                              lightcolor='#333', darkcolor='#333',
+                              selectbackground='#404040',
+                              selectforeground='white')
+        self._style.map('Dark.TCombobox',
+                        fieldbackground=[('readonly', '#2a2a2a')],
+                        foreground=[('readonly', 'white')])
+        # Force listbox popup to dark too
+        self.window.option_add('*TCombobox*Listbox.background', '#2a2a2a')
+        self.window.option_add('*TCombobox*Listbox.foreground', 'white')
+        self.window.option_add('*TCombobox*Listbox.selectBackground', '#404040')
+        self.window.option_add('*TCombobox*Listbox.selectForeground', 'white')
+        self.window.geometry("640x760")
+        self.window.minsize(560, 760)
         self.window.configure(bg='#1a1a1a')
         self.window.attributes('-topmost', True)
-        self.window.resizable(False, False)
+        self.window.resizable(True, True)
         
         # Center on parent window
         self._center_on_parent()
         
-        # Make modal
+        # Make modal and force on top of parent
         self.window.transient(parent)
         self.window.grab_set()
+        self.window.lift()
+        self.window.focus_force()
+        self.window.after(100, lambda: self.window.attributes('-topmost', True))
         
         # Create menu bar
         self._create_menu_bar()
@@ -45,6 +73,7 @@ class SettingsWindow:
         self.copy_clipboard_var = tk.BooleanVar()
         self.english_only_var = tk.BooleanVar()
         self.technical_filter_var = tk.BooleanVar()
+        self.voice_commands_var = tk.BooleanVar()
         
         # Create widgets
         self._create_widgets()
@@ -60,10 +89,10 @@ class SettingsWindow:
         parent_w = self.parent.winfo_width()
         parent_h = self.parent.winfo_height()
         
-        x = parent_x + (parent_w // 2) - 200  # 200 = half window width
-        y = parent_y + (parent_h // 2) - 290  # 290 = half window height (580/2)
-        
-        self.window.geometry(f"400x580+{x}+{y}")
+        x = parent_x + (parent_w // 2) - 320  # half of 640
+        y = parent_y + (parent_h // 2) - 380  # half of 760
+
+        self.window.geometry(f"640x760+{x}+{y}")
     
     def _create_menu_bar(self):
         """Create menu bar with About dropdown"""
@@ -111,8 +140,9 @@ class SettingsWindow:
     
     def _create_hotkey_section(self, parent):
         """Create hotkey configuration section"""
-        hotkey_frame = tk.LabelFrame(parent, text="Hotkey", fg='white', bg='#1a1a1a', 
-                                    font=('Arial', 9, 'bold'))
+        hotkey_frame = tk.LabelFrame(parent, text="Hotkey", fg='white', bg='#1a1a1a',
+                                    font=('Arial', 9, 'bold'),
+                                    bd=1, relief='flat', highlightthickness=0)
         hotkey_frame.pack(fill='x', pady=5)
         
         # Current hotkey display
@@ -130,7 +160,8 @@ class SettingsWindow:
     def _create_audio_section(self, parent):
         """Create audio device selection section"""
         audio_frame = tk.LabelFrame(parent, text="Audio Device", fg='white', bg='#1a1a1a',
-                                   font=('Arial', 9, 'bold'))
+                                   font=('Arial', 9, 'bold'),
+                                   bd=1, relief='flat', highlightthickness=0)
         audio_frame.pack(fill='x', pady=5)
         
         # Device dropdown
@@ -138,13 +169,15 @@ class SettingsWindow:
         device_names = ["System Default"] + [dev['name'] for dev in devices]
         
         self.device_dropdown = ttk.Combobox(audio_frame, textvariable=self.device_var,
-                                           values=device_names, state='readonly')
+                                           values=device_names, state='readonly',
+                                           style='Dark.TCombobox')
         self.device_dropdown.pack(fill='x', padx=10, pady=5)
     
     def _create_delay_section(self, parent):
         """Create post delay section - match hotkey section layout"""
         delay_frame = tk.LabelFrame(parent, text="Post Delay", fg='white', bg='#1a1a1a',
-                                   font=('Arial', 9, 'bold'))
+                                   font=('Arial', 9, 'bold'),
+                                   bd=1, relief='flat', highlightthickness=0)
         delay_frame.pack(fill='x', pady=5)
         
         # Current delay display (like hotkey section)
@@ -164,81 +197,45 @@ class SettingsWindow:
     def _create_always_on_top_section(self, parent):
         """Create options section for always on top and future features"""
         options_frame = tk.LabelFrame(parent, text="Options", fg='white', bg='#1a1a1a',
-                                     font=('Arial', 9, 'bold'))
+                                     font=('Arial', 9, 'bold'),
+                                     bd=1, relief='flat', highlightthickness=0)
         options_frame.pack(fill='x', pady=5)
         
-        # Checkboxes container with structured layout for 6 total options
+        # Two-column grid of option checkboxes
         checkboxes_container = tk.Frame(options_frame, bg='#1a1a1a')
         checkboxes_container.pack(fill='x', padx=10, pady=5)
-        
-        # Row 1: Always on top + Cache models
-        checkboxes_frame1 = tk.Frame(checkboxes_container, bg='#1a1a1a')
-        checkboxes_frame1.pack(fill='x', pady=2)
-        
-        # Always on top checkbox
-        always_on_top_check = tk.Checkbutton(checkboxes_frame1, text="Always on top",
-                                            variable=self.always_on_top_var,
-                                            fg='white', bg='#1a1a1a',
-                                            selectcolor='#404040',
-                                            activeforeground='white',
-                                            activebackground='#1a1a1a',
-                                            font=('Arial', 9))
-        always_on_top_check.pack(side='left', anchor='w')
-        
-        # Clear clipboard on close checkbox
-        clear_clipboard_check = tk.Checkbutton(checkboxes_frame1, text="Clear clipboard on close",
-                                               variable=self.clear_clipboard_on_close_var,
-                                               fg='white', bg='#1a1a1a',
-                                               selectcolor='#404040',
-                                               activeforeground='white',
-                                               activebackground='#1a1a1a',
-                                               font=('Arial', 9))
-        clear_clipboard_check.pack(side='left', anchor='w', padx=(20, 0))
-        
-        # Row 2: Copy to clipboard + Future option space
-        checkboxes_frame2 = tk.Frame(checkboxes_container, bg='#1a1a1a')
-        checkboxes_frame2.pack(fill='x', pady=2)
-        
-        # Copy to clipboard checkbox
-        copy_clipboard_check = tk.Checkbutton(checkboxes_frame2, text="Copy to clipboard",
-                                             variable=self.copy_clipboard_var,
-                                             fg='white', bg='#1a1a1a',
-                                             selectcolor='#404040',
-                                             activeforeground='white',
-                                             activebackground='#1a1a1a',
-                                             font=('Arial', 9))
-        copy_clipboard_check.pack(side='left', anchor='w')
-        
-        # English Only checkbox
-        english_only_check = tk.Checkbutton(checkboxes_frame2, text="English Only",
-                                           variable=self.english_only_var,
-                                           fg='white', bg='#1a1a1a',
-                                           selectcolor='#404040',
-                                           activeforeground='white',
-                                           activebackground='#1a1a1a',
-                                           font=('Arial', 9))
-        english_only_check.pack(side='left', anchor='w', padx=(20, 0))
-        
-        # Row 3: Technical filter and future option
-        checkboxes_frame3 = tk.Frame(checkboxes_container, bg='#1a1a1a')
-        checkboxes_frame3.pack(fill='x', pady=2)
-        
-        # Technical filter checkbox
-        technical_filter_check = tk.Checkbutton(checkboxes_frame3, text="Technical Filter",
-                                               variable=self.technical_filter_var,
-                                               fg='white', bg='#1a1a1a',
-                                               selectcolor='#404040',
-                                               activeforeground='white',
-                                               activebackground='#1a1a1a',
-                                               font=('Arial', 9))
-        technical_filter_check.pack(side='left', anchor='w')
-        
+        checkboxes_container.columnconfigure(0, weight=1, uniform='opt')
+        checkboxes_container.columnconfigure(1, weight=1, uniform='opt')
 
-    
+        def _cb(parent, text, var):
+            return tk.Checkbutton(parent, text=text, variable=var,
+                                  fg='white', bg='#1a1a1a',
+                                  selectcolor='#404040',
+                                  activeforeground='white',
+                                  activebackground='#1a1a1a',
+                                  font=('Arial', 9), anchor='w',
+                                  bd=0, highlightthickness=0,
+                                  padx=0, pady=0)
+
+        options = [
+            ("Always on top",          self.always_on_top_var),
+            ("Clear clipboard on exit", self.clear_clipboard_on_close_var),
+            ("Copy to clipboard",      self.copy_clipboard_var),
+            ("English Only",           self.english_only_var),
+            ("Voice Commands",         self.voice_commands_var),
+            ("Technical Filter",       self.technical_filter_var),
+        ]
+        for i, (label, var) in enumerate(options):
+            row, col = divmod(i, 2)
+            _cb(checkboxes_container, label, var).grid(
+                row=row, column=col, sticky='w', padx=(0, 20), pady=2)
+
+
     def _create_model_size_section(self, parent):
         """Create model size selection section"""
         model_size_frame = tk.LabelFrame(parent, text="Model Selection", fg='white', bg='#1a1a1a',
-                                        font=('Arial', 9, 'bold'))
+                                        font=('Arial', 9, 'bold'),
+                                        bd=1, relief='flat', highlightthickness=0)
         model_size_frame.pack(fill='x', pady=5)
         
         # Get available models from model manager (ONLY from models folder, not cache)
@@ -264,7 +261,8 @@ class SettingsWindow:
         dropdown_container.pack(fill='x', padx=10, pady=5)
         
         self.model_size_dropdown = ttk.Combobox(dropdown_container, textvariable=self.model_size_var,
-                                               values=model_options, state='readonly')
+                                               values=model_options, state='readonly',
+                                               style='Dark.TCombobox')
         self.model_size_dropdown.pack(side='left', fill='x', expand=True)
         
         # Add refresh button (clearer text)
@@ -401,6 +399,9 @@ class SettingsWindow:
         
         # Technical filter (default True)
         self.technical_filter_var.set(self.settings.get_technical_filter())
+
+        # Voice commands (default False)
+        self.voice_commands_var.set(self.settings.get_voice_commands())
         
         # Model size
         current_model_size = self.settings.get_whisper_model_size()
@@ -476,6 +477,9 @@ class SettingsWindow:
             # Save technical filter setting
             self.settings.set_technical_filter(self.technical_filter_var.get())
             technical_filter_success = True
+
+            # Save voice commands setting
+            self.settings.set_voice_commands(self.voice_commands_var.get())
             
             # Save model size (extract model name from format like "small (967MB)")
             selected_model_display = self.model_size_var.get()
@@ -547,15 +551,16 @@ class SettingsWindow:
         """Show about dialog"""
         about_window = tk.Toplevel(self.window)
         about_window.title("About LoudMouth")
-        about_window.geometry("500x400")
+        about_window.geometry("1024x800")
+        about_window.minsize(560, 500)
         about_window.configure(bg='#1a1a1a')
         about_window.attributes('-topmost', True)
-        about_window.resizable(False, False)
-        
+        about_window.resizable(True, True)
+
         # Center on settings window
         x = self.window.winfo_x() + 50
         y = self.window.winfo_y() + 50
-        about_window.geometry(f"500x400+{x}+{y}")
+        about_window.geometry(f"1024x800+{x}+{y}")
         
         # Make modal
         about_window.transient(self.window)
@@ -576,13 +581,40 @@ class SettingsWindow:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
-        # About content
-        about_text = """🎙️ LoudMouth (Push-to-Talk) Application
+        # About content — commands first, details after
+        about_text = """🎙️ Voice Commands (enable in Options)
 =============================================
+Commands are recognized only at the END of what you say,
+so "I love enterprise" still types the whole sentence.
+Commands can chain — "hello enter enter" types "hello"
+and presses Enter twice.
 
+Single-word:
+  enter / return / new line ........ Enter
+  tab (or cab/tad) ................. Tab
+  backspace ........................ Backspace
+  escape / esc ..................... Escape
+  space ............................ Space
+  delete ........................... Delete
+  home, end ........................ Home / End
+  up, down, left, right ............ Arrow keys
+  page up, page down ............... PageUp / PageDown
+
+Modifier combos (say modifier + key):
+  control c / control v / control z
+  alt tab
+  shift tab
+  (any of: control, ctrl, alt, shift)
+
+Tip: when Voice Commands is enabled the app biases
+Whisper toward these words so short utterances like
+"tab" transcribe more reliably.
+
+
+🎙️ LoudMouth (Push-to-Talk) Application
+=============================================
 Version: 1.0
 Author: Sggin1 with collaboration from Claude
-
 
 ✨ Features:
 • Offline speech recognition using OpenAI Whisper
@@ -628,9 +660,8 @@ Author: Sggin1 with collaboration from Claude
 5. Hold hotkey to record speech
 6. Release to transcribe
 
-For best performance, use English-only mode
-and select the smallest model that meets your
-accuracy requirements.
+For best performance, use English-only mode and select
+the smallest model that meets your accuracy requirements.
 
 Enjoy efficient, offline speech recognition!"""
         
@@ -651,15 +682,16 @@ Enjoy efficient, offline speech recognition!"""
         
         info_window = tk.Toplevel(self.window)
         info_window.title("System Information")
-        info_window.geometry("500x400")
+        info_window.geometry("640x560")
+        info_window.minsize(520, 420)
         info_window.configure(bg='#1a1a1a')
         info_window.attributes('-topmost', True)
-        info_window.resizable(False, False)
-        
+        info_window.resizable(True, True)
+
         # Center on settings window
         x = self.window.winfo_x() + 60
         y = self.window.winfo_y() + 60
-        info_window.geometry(f"500x400+{x}+{y}")
+        info_window.geometry(f"640x560+{x}+{y}")
         
         # Make modal
         info_window.transient(self.window)
@@ -730,15 +762,16 @@ Models Cache: ~/.cache/whisper/"""
         """Show Whisper model information"""
         model_window = tk.Toplevel(self.window)
         model_window.title("Whisper Models")
-        model_window.geometry("500x400")
+        model_window.geometry("640x560")
+        model_window.minsize(520, 420)
         model_window.configure(bg='#1a1a1a')
         model_window.attributes('-topmost', True)
-        model_window.resizable(False, False)
-        
+        model_window.resizable(True, True)
+
         # Center on settings window
         x = self.window.winfo_x() + 70
         y = self.window.winfo_y() + 70
-        model_window.geometry(f"500x400+{x}+{y}")
+        model_window.geometry(f"640x560+{x}+{y}")
         
         # Make modal
         model_window.transient(self.window)

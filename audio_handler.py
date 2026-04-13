@@ -13,17 +13,24 @@ import threading
 import time
 from typing import Optional, List, Dict, Callable
 
+import torch
+
 from model_manager import ModelManager
+
+_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+_USE_FP16 = _DEVICE == "cuda"
 
 
 class AudioHandler:
     """Handles audio recording and Whisper transcription"""
     
-    def __init__(self, settings_manager, status_callback: Optional[Callable] = None, 
-                 transcript_callback: Optional[Callable] = None):
+    def __init__(self, settings_manager, status_callback: Optional[Callable] = None,
+                 transcript_callback: Optional[Callable] = None,
+                 level_callback: Optional[Callable] = None):
         self.settings_manager = settings_manager
         self.status_callback = status_callback
         self.transcript_callback = transcript_callback
+        self.level_callback = level_callback
         self.whisper_model = None
         self.audio_format = pyaudio.paInt16
         self.channels = 1
@@ -94,7 +101,7 @@ class AudioHandler:
         
         self._update_status(f"Downloading {model_size} model (this may take a while)...")
         try:
-            self.whisper_model = whisper.load_model(model_size, device="cpu")
+            self.whisper_model = whisper.load_model(model_size, device=_DEVICE)
             self._update_status(f"✅ {model_size} model downloaded and ready")
         except Exception as e:
             self._update_status(f"❌ Failed to download {model_size} model")
@@ -105,10 +112,10 @@ class AudioHandler:
         try:
             model_path = self.model_manager.get_model_path(model_size)
             if model_path:
-                self.whisper_model = whisper.load_model(model_path, device="cpu")
+                self.whisper_model = whisper.load_model(model_path, device=_DEVICE)
                 print(f"Loaded model from: {model_path}")
             else:
-                self.whisper_model = whisper.load_model(model_size, device="cpu")
+                self.whisper_model = whisper.load_model(model_size, device=_DEVICE)
                 print(f"Loaded model: {model_size}")
         except Exception as e:
             self._update_status(f"❌ Failed to load {model_size} model")
@@ -180,7 +187,9 @@ class AudioHandler:
         return devices
     
     def set_device(self, device_index: Optional[int]):
-        """Set audio input device"""
+        """Set audio input device (pass None / <0 to use system default)"""
+        if device_index is not None and device_index < 0:
+            device_index = None
         self.selected_device_index = device_index
         self._reset_level_stream()  # Reset stream when device changes
     
@@ -241,10 +250,23 @@ class AudioHandler:
             )
             
             frames = []
+            noise_floor = 40.0
             while self.is_recording:
                 try:
                     data = stream.read(self.chunk, exception_on_overflow=False)
                     frames.append(data)
+                    # Compute RMS for live level display while recording
+                    if self.level_callback is not None:
+                        arr = np.frombuffer(data, dtype=np.int16)
+                        ms = float(np.mean(arr.astype(np.float32) ** 2))
+                        if ms > 0:
+                            rms = ms ** 0.5
+                            lvl = 0.0 if rms < noise_floor else min(
+                                100.0, ((rms - noise_floor) / 1200.0) * 100.0)
+                            try:
+                                self.level_callback(lvl)
+                            except Exception:
+                                pass
                 except (OSError, IOError) as e:
                     print(f"Recording chunk error: {e}")
                     break
@@ -298,12 +320,25 @@ class AudioHandler:
             else:
                 language = None  # Auto-detect language
             
+            # Bias decoding towards command words when voice-commands mode is on
+            initial_prompt = None
+            try:
+                if self.settings_manager.get_voice_commands():
+                    initial_prompt = (
+                        "Command words: enter, return, tab, backspace, escape, "
+                        "space, delete, home, end, up, down, left, right, "
+                        "page up, page down, new line, control, alt, shift."
+                    )
+            except Exception:
+                pass
+
             # Enhanced Whisper parameters for PTT use case
             result = self.whisper_model.transcribe(
                 self.temp_file_path,
                 # Core quality settings
-                fp16=False,  # Explicit FP32 for stability
+                fp16=_USE_FP16,  # FP16 on CUDA, FP32 on CPU
                 language=language,
+                initial_prompt=initial_prompt,
                 
                 # Improved accuracy settings
                 temperature=self.settings_manager.get_whisper_temperature(),
@@ -327,22 +362,33 @@ class AudioHandler:
             )
             
             text = result["text"].strip()
-            
-            # Enhanced result processing
-            if text:
-                # Optional: Log confidence and other metrics
-                if (self.settings_manager.get_whisper_show_confidence() and 
-                    "segments" in result and result["segments"]):
-                    avg_logprob = sum(seg.get("avg_logprob", 0) for seg in result["segments"]) / len(result["segments"])
-                    no_speech_prob = result["segments"][0].get("no_speech_prob", 0)
-                    
-                    print(f"Transcription confidence: {avg_logprob:.2f}, No speech prob: {no_speech_prob:.2f}")
-                
+
+            # Compute confidence metrics and gate common silence-hallucinations
+            avg_logprob = 0.0
+            no_speech_prob = 0.0
+            if "segments" in result and result["segments"]:
+                avg_logprob = sum(s.get("avg_logprob", 0) for s in result["segments"]) / len(result["segments"])
+                no_speech_prob = result["segments"][0].get("no_speech_prob", 0)
+            print(f"Transcription confidence: {avg_logprob:.2f}, No speech prob: {no_speech_prob:.2f}")
+
+            # Known Whisper hallucinations when given silence/noise.
+            silence_phrases = {
+                "thank you", "thanks", "thanks for watching", "thank you.",
+                "you", ".", "bye", "bye.", "[blank_audio]", "(silence)",
+            }
+            is_hallucination = (
+                text.lower().strip(" .!?,") in silence_phrases
+                and (no_speech_prob > 0.3 or avg_logprob < -0.8)
+            )
+
+            if text and not is_hallucination:
                 self._update_status("Transcription ready")
                 if self.transcript_callback:
                     self.transcript_callback(text)
             else:
                 self._update_status("No speech detected")
+                if is_hallucination:
+                    print(f"[gate] Dropped likely silence hallucination: {text!r}")
                 
         except Exception as e:
             self._update_status(f"Transcription error: {str(e)}")
@@ -365,8 +411,12 @@ class AudioHandler:
                 mean_square = np.mean(audio_array**2)
                 
                 if mean_square > 0 and not np.isnan(mean_square):
-                    rms = np.sqrt(mean_square)
-                    return min(100, (rms / 500) * 100)
+                    rms = float(np.sqrt(mean_square))
+                    # Light noise floor; speech typically >> 100 RMS
+                    noise_floor = 40.0
+                    if rms < noise_floor:
+                        return 0.0
+                    return min(100.0, ((rms - noise_floor) / 1200.0) * 100.0)
             
             return 0.0
             
