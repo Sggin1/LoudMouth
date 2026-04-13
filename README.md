@@ -109,6 +109,7 @@ LoudMouth is free and open source. If you find it useful, consider supporting:
    spoken = "space 5, copy 7, enter , paste
    Output: 'Space', 'Space', 'Space', 'Space', 'Space', 'Copy( next 7 chars)','enter', paste
 - [ ] **v2.x** - lightweight translucent UI overlay
+- [ ] **v2.x** - target-window capture: click-to-pick a window (terminal, editor, etc.); LoudMouth brings it forward and types transcriptions into it regardless of current focus. Falls back to active cursor if the target process dies. Cross-platform via python-xlib on Linux and pywin32 on Windows.
 
 ## 🔧 Building from Source
 
