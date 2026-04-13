@@ -7,7 +7,10 @@ from typing import List, Dict, Any, Optional
 import pyautogui
 import time
 import os
-import win32gui
+try:
+    import win32gui  # Windows-only; guarded for cross-platform use
+except ImportError:
+    win32gui = None
 from text_normalizer import text_normalizer
 
 
@@ -19,18 +22,79 @@ class CommandParser:
         self.command_patterns = {}  # Future: command definitions
         self.text_normalizer = text_normalizer  # Use the global text normalizer
     
+    # Single-word command tokens mapped to key presses
+    COMMAND_WORDS = {
+        "enter": "enter",
+        "return": "enter",
+        "tab": "tab",
+        "cab": "tab",   # common Whisper mishear for short "tab"
+        "tad": "tab",
+        "backspace": "backspace",
+        "escape": "escape",
+        "esc": "escape",
+        "space": "space",
+        "delete": "delete",
+        "home": "home",
+        "end": "end",
+        "up": "up",
+        "down": "down",
+        "left": "left",
+        "right": "right",
+    }
+    # Two-word phrases that map to a single key
+    COMMAND_PHRASES = {
+        ("new", "line"): "enter",
+        ("page", "up"): "pageup",
+        ("page", "down"): "pagedown",
+    }
+    # Modifier words accepted at the tail of a combo, e.g. "control c"
+    MODIFIERS = {"control": "ctrl", "ctrl": "ctrl", "alt": "alt", "shift": "shift"}
+
     def parse_commands(self, text: str) -> tuple[str, List[str]]:
-        """Parse text for commands - returns (clean_text, commands)"""
-        # Always apply text normalization first
+        """Parse text for commands - returns (clean_text, commands).
+
+        Recognizes command words at the *tail* of the utterance, peeling
+        them off one at a time so multiple commands chain
+        (e.g. "hello enter enter" -> "hello" + [enter, enter]).
+        """
         normalized_text = self.text_normalizer.normalize_text(text)
-        
-        # If commands are not enabled, just return normalized text
         if not self.enabled:
             return normalized_text, []
-        
-        # TODO: Implement command parsing logic
-        # Example: "Hello world enter" -> ("Hello world", ["enter"])
-        return normalized_text, []
+
+        # Tokenize while stripping trailing punctuation from each word
+        raw_tokens = normalized_text.split()
+        tokens = [t.rstrip(".,!?;:") for t in raw_tokens]
+
+        commands: List[str] = []
+        while tokens:
+            last = tokens[-1].lower()
+            prev = tokens[-2].lower() if len(tokens) >= 2 else None
+
+            # Modifier + key (e.g. "control c", "alt tab")
+            if prev in self.MODIFIERS:
+                key = last
+                if key in self.COMMAND_WORDS:
+                    key = self.COMMAND_WORDS[key]
+                commands.insert(0, f"key:{self.MODIFIERS[prev]}+{key}")
+                tokens = tokens[:-2]
+                continue
+
+            # Two-word phrase (e.g. "new line")
+            if prev and (prev, last) in self.COMMAND_PHRASES:
+                commands.insert(0, f"key:{self.COMMAND_PHRASES[(prev, last)]}")
+                tokens = tokens[:-2]
+                continue
+
+            # Single-word command
+            if last in self.COMMAND_WORDS:
+                commands.insert(0, f"key:{self.COMMAND_WORDS[last]}")
+                tokens = tokens[:-1]
+                continue
+
+            break  # no more trailing commands
+
+        clean_text = " ".join(tokens)
+        return clean_text, commands
     
     def enable_commands(self):
         """Enable command parsing (for future use)"""

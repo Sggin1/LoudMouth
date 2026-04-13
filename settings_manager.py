@@ -31,6 +31,7 @@ class SettingsManager:
             "clear_clipboard_on_close": True,
             "english_only": True,
             "technical_filter": True,
+            "voice_commands": False,
             "mic_muted": True,
             "download_url": "https://openaipublic.azureedge.net/main/whisper/models",
             "whisper_language": "en",
@@ -196,7 +197,7 @@ class SettingsManager:
             
             # Validate boolean values
             bool_keys = ['always_on_top', 'copy_clipboard', 'clear_clipboard_on_close',
-                        'english_only', 'technical_filter', 'mic_muted',
+                        'english_only', 'technical_filter', 'voice_commands', 'mic_muted',
                         'whisper_word_timestamps', 'whisper_show_confidence']
             for key in bool_keys:
                 if key in self.settings and not isinstance(self.settings[key], bool):

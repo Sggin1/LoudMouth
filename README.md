@@ -16,7 +16,7 @@
 - **⚡ Fast** - Optimized for short audio clips
 - **🎯 Developer-Focused** - Technical filter converts "underscore" → "_", "dot py" → ".py"
 - **🎛️ Customizable** - Multiple models, hotkeys, and settings
-- **🖥️ Cross-Platform** - Windows, macOS, Linux support
+- **🖥️ Cross-Platform** - Linux verified; Windows tests upcoming; macOS support
 - **🎪 Easy to Use** - Simple push-to-talk interface
 
 ## 📸 Screenshots

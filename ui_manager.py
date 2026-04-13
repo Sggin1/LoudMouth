@@ -40,11 +40,14 @@ class UIManager:
     def _setup_window(self):
         """Configure main window properties"""
         self.root.title("v3 PTT")
-        self.root.resizable(False, False)
+        self.root.resizable(True, True)
+        # Keep minsize small so minimize-to-icon can shrink the window;
+        # restore code sets a larger geometry explicitly.
+        self.root.minsize(1, 1)
         self.root.configure(bg='#1a1a1a')
         
         # Calculate center position immediately
-        width, height = 250, 300
+        width, height = 720, 640
         x = (self.root.winfo_screenwidth() // 2) - (width // 2)
         y = (self.root.winfo_screenheight() // 2) - (height // 2)
         
@@ -53,11 +56,9 @@ class UIManager:
         
         # Configure window properties
         self.root.attributes('-topmost', True)
-        self.root.overrideredirect(True)
-        
-        # Make window draggable
-        self.root.bind('<Button-1>', self._start_drag)
-        self.root.bind('<B1-Motion>', self._drag_window)
+        # Use native window decorations (resize, drag, focus handled by WM).
+        # This avoids the custom overrideredirect window breaking interaction.
+        # The custom header still provides a minimize-to-dot button.
     
     def _center_window(self):
         """Center window on screen"""
@@ -80,7 +81,8 @@ class UIManager:
         self._create_control_section(self.main_frame)
         self._create_transcript_section(self.main_frame)
         self._create_settings_section(self.main_frame)
-    
+
+
     def _create_header(self, parent):
         """Create header with title and window controls"""
         self.header_frame = tk.Frame(parent, bg='#2d2d2d', height=30)
@@ -97,17 +99,14 @@ class UIManager:
         self.controls_frame = tk.Frame(self.header_frame, bg='#2d2d2d')
         self.controls_frame.pack(side='right', padx=5)
         
-        self.minimize_btn = tk.Button(self.controls_frame, text="−", 
-                               fg='white', bg='#404040',
-                               command=self._minimize_window, 
-                               relief='flat', width=2, font=('Arial', 8))
+        # Collapse-to-dot button (brighter so it stands out next to the
+        # native WM's own minimize/close buttons)
+        self.minimize_btn = tk.Button(self.controls_frame, text="◉ Small",
+                               fg='black', bg='#00ff00',
+                               command=self._minimize_window,
+                               relief='raised', font=('Arial', 9, 'bold'))
         self.minimize_btn.pack(side='left', padx=1)
-        
-        self.close_btn = tk.Button(self.controls_frame, text="×", 
-                            fg='white', bg='#d63384',
-                            command=self.root.quit, 
-                            relief='flat', width=2, font=('Arial', 8))
-        self.close_btn.pack(side='left', padx=1)
+        # Native WM already provides a close button; no custom close button.
     
     def _create_status_section(self, parent):
         """Create status display section"""
@@ -268,23 +267,22 @@ class UIManager:
         """Minimize to small icon"""
         # Store current geometry and position
         self.normal_geometry = self.root.geometry()
-        
+
         # Get current position
         current_x = self.root.winfo_x()
         current_y = self.root.winfo_y()
-        
+
         # Hide all widgets except header
         for widget in self.main_frame.winfo_children():
             if widget != self.header_frame:
                 widget.pack_forget()
-        
-        # Resize to slightly larger icon size for better double-click target
-        icon_size = 36  # Slightly larger for easier double-clicking
+
+        # Small icon (roughly 4x a titlebar button so it's easy to grab)
+        icon_size = 72
         self.root.geometry(f"{icon_size}x{icon_size}+{current_x}+{current_y}")
         
-        # Hide title and close button
+        # Hide title
         self.title_label.pack_forget()
-        self.close_btn.pack_forget()
         
         # Configure header frame for icon mode
         self.header_frame.configure(height=icon_size, bg='#2d2d2d')
@@ -301,10 +299,10 @@ class UIManager:
         # Use simple text that works on all Windows systems
         self.icon_button = tk.Label(
             icon_frame,
-            text="MIC",
-            font=('Arial', 11, 'bold'),  # Slightly larger font
+            text="●",
+            font=('Arial', 32, 'bold'),
             bg='#2d2d2d',
-            fg='#00ccff',
+            fg='#00ff00',
             cursor='hand2'
         )
         self.icon_button.pack(fill='both', expand=True)
@@ -316,11 +314,16 @@ class UIManager:
             self._restore_window()
             return "break"
         
-        # Bind double-click to restore window (simpler, more reliable)
+        # Bind both single-click and double-click to restore (Linux WM
+        # may not deliver double-clicks reliably on overrideredirect windows)
         clickable_widgets = [icon_frame, self.icon_button, self.header_frame, self.root]
         for widget in clickable_widgets:
             widget.bind('<Double-Button-1>', on_double_click)
-            print(f"Bound double-click restore to {widget}")
+            widget.bind('<Button-3>', on_double_click)  # right-click restore
+            print(f"Bound restore handlers to {widget}")
+        # Middle-click on icon also restores
+        self.icon_button.bind('<Button-1>', on_double_click)
+        icon_frame.bind('<Button-1>', on_double_click)
         
         # Remove problematic hover effects (they cause errors)
         # Just keep the simple functionality
@@ -347,9 +350,9 @@ class UIManager:
             self.root.geometry(self.normal_geometry)
             print(f"Restored geometry: {self.normal_geometry}")  # Debug
         
-        # Restore window styling
+        # Restore window styling (wipe any pulse tint)
         self.root.configure(bg='#1a1a1a')
-        self.main_frame.configure(relief='raised', bd=1)
+        self.main_frame.configure(relief='raised', bd=1, bg='#1a1a1a')
         self.header_frame.configure(height=30, bg='#2d2d2d')
         
         # Remove the temporary icon button
@@ -367,32 +370,17 @@ class UIManager:
         # Restore controls frame position
         self.controls_frame.pack(side='right', padx=5)
         
-        # Restore minimize button to normal style
+        # Restore minimize button to its normal "◉ Small" style
         self.minimize_btn.config(
-            text="−", 
+            text="◉ Small",
             command=self._minimize_window,
-            font=('Arial', 8),
-            bg='#404040',
-            fg='white',
-            width=2,
-            height=1,
-            relief='flat',
-            bd=0
+            font=('Arial', 9, 'bold'),
+            bg='#00ff00',
+            fg='black',
+            relief='raised',
+            bd=2
         )
         self.minimize_btn.pack(side='left', padx=1)
-        
-        # Restore close button to normal style
-        self.close_btn.config(
-            text="×",
-            font=('Arial', 8),
-            bg='#d63384',
-            fg='white',
-            width=2,
-            height=1,
-            relief='flat',
-            bd=0
-        )
-        self.close_btn.pack(side='left', padx=1)
         
         # Show all widgets again
         self.status_frame.pack(fill='x', padx=5, pady=2)
@@ -428,7 +416,13 @@ class UIManager:
             pass
     
     def update_status(self, status: str):
-        """Update status display"""
+        """Update status display (thread-safe)"""
+        try:
+            self.root.after(0, self._update_status_impl, status)
+        except (RuntimeError, tk.TclError):
+            pass  # UI likely torn down
+
+    def _update_status_impl(self, status: str):
         self.status_var.set(status)
         self._update_status_color(status)
     
@@ -446,7 +440,13 @@ class UIManager:
             self.status_label.config(fg='#cccccc')
     
     def update_transcript(self, text: str):
-        """Update transcript display"""
+        """Update transcript display (thread-safe)"""
+        try:
+            self.root.after(0, self._update_transcript_impl, text)
+        except (RuntimeError, tk.TclError):
+            pass
+
+    def _update_transcript_impl(self, text: str):
         self.transcript_text.delete(1.0, tk.END)
         self.transcript_text.insert(1.0, text)
     
@@ -459,9 +459,14 @@ class UIManager:
         self.root.attributes('-topmost', on_top)
     
     def update_model_status(self, status: str):
-        """Update model status display"""
+        """Update model status display (thread-safe)"""
+        try:
+            self.root.after(0, self._update_model_status_impl, status)
+        except (RuntimeError, tk.TclError):
+            pass
+
+    def _update_model_status_impl(self, status: str):
         self.model_status_var.set(status)
-        # Update color based on status
         if "✅" in status:
             self.model_status_label.config(fg='#00ff00')
         elif "❌" in status:
@@ -495,7 +500,25 @@ class UIManager:
         except (tk.TclError, AttributeError) as e:
             # Handle Tkinter errors during UI updates
             print(f"UI update error: {e}")
-    
+
+        # Pulse the collapsed dot window background with audio level
+        if self.is_minimized and hasattr(self, 'icon_button') and self.icon_button.winfo_exists():
+            try:
+                # Map level 0-100 to green brightness for the whole icon area
+                brightness = int(30 + (level / 100.0) * 225)  # 30..255
+                brightness = max(30, min(255, brightness))
+                bg_color = f'#00{brightness:02x}00'
+                # Keep the '●' glyph visible by giving it a contrasting fg:
+                # dark when background is bright, light when background is dim.
+                fg_color = '#003300' if brightness > 140 else '#00ff88'
+                self.icon_button.config(bg=bg_color, fg=fg_color)
+                self.icon_button.master.config(bg=bg_color)  # icon_frame
+                self.header_frame.config(bg=bg_color)
+                self.root.config(bg=bg_color)
+                self.main_frame.config(bg=bg_color)
+            except tk.TclError:
+                pass
+
     def run(self):
         """Start the UI main loop"""
         try:

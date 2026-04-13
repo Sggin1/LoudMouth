@@ -37,7 +37,8 @@ class V3PTTApp:
         self.audio_handler = AudioHandler(
             self.settings,
             status_callback=self.on_status_update,
-            transcript_callback=self.on_transcript_ready
+            transcript_callback=self.on_transcript_ready,
+            level_callback=lambda lvl: self.ui.root.after(0, self.ui.update_audio_level, lvl)
         )
         
         # Initialize hotkey manager with callbacks
@@ -88,8 +89,17 @@ class V3PTTApp:
                 self.command_parser.enable_text_normalization()
             else:
                 self.command_parser.disable_text_normalization()
-            
-            print(f"Settings applied - Hotkey: {self.settings.get_hotkey_display_text()}, Technical Filter: {'Enabled' if technical_filter_enabled else 'Disabled'}")
+
+            # Apply voice commands setting
+            voice_commands_enabled = self.settings.get_voice_commands()
+            if voice_commands_enabled:
+                self.command_parser.enable_commands()
+            else:
+                self.command_parser.disable_commands()
+
+            print(f"Settings applied - Hotkey: {self.settings.get_hotkey_display_text()}, "
+                  f"Technical Filter: {'On' if technical_filter_enabled else 'Off'}, "
+                  f"Voice Commands: {'On' if voice_commands_enabled else 'Off'}")
         except Exception as e:
             print(f"Error applying settings: {e}")
             self.ui.update_status(f"Settings error: {str(e)}")
@@ -146,37 +156,16 @@ class V3PTTApp:
         # Copy normalized text to clipboard if enabled
         clipboard_success = False
         if self.settings.get_copy_clipboard():
+            clipboard_text = clean_text.strip()
+            print(f"Copying to clipboard: '{clipboard_text}'")
             try:
-                clipboard_text = clean_text.strip()
-                print(f"Copying to clipboard: '{clipboard_text}'")
-                
-                # Use a more robust clipboard copy method
-                import subprocess
-                subprocess.run(['powershell', '-c', f'Set-Clipboard -Value "{clipboard_text}"'], 
-                             check=True, capture_output=True)
-                
-                # Verify with pyperclip
-                import time
-                time.sleep(0.1)  # Small delay to ensure clipboard is updated
-                clipboard_content = pyperclip.paste()
-                
-                if clipboard_content == clipboard_text:
-                    print("✅ Clipboard copy successful")
-                    clipboard_success = True
-                else:
-                    print("❌ Clipboard verification failed, trying fallback...")
-                    # Fallback to pyperclip
-                    pyperclip.copy(clipboard_text)
-                    clipboard_success = True
-                
+                pyperclip.copy(clipboard_text)
+                clipboard_success = pyperclip.paste() == clipboard_text
+                print("✅ Clipboard copy successful" if clipboard_success
+                      else "❌ Clipboard verification failed")
             except Exception as e:
                 print(f"❌ Clipboard error: {e}")
-                # Fallback to pyperclip if PowerShell fails
-                try:
-                    pyperclip.copy(clipboard_text)
-                    clipboard_success = True
-                except Exception:
-                    clipboard_success = False
+                clipboard_success = False
         
         # Execute text and commands - this returns a status message, not text to type
         result = self.command_executor.execute_text_and_commands(clean_text, commands)
@@ -200,6 +189,8 @@ class V3PTTApp:
         """Open settings window"""
         try:
             from settings_window import SettingsWindow
+            # Drop main topmost so settings can sit above it reliably
+            self.ui.root.attributes('-topmost', False)
             settings_window = SettingsWindow(
                 self.ui.root,
                 self.settings,
@@ -207,6 +198,12 @@ class V3PTTApp:
                 self.hotkey_manager,
                 self.on_settings_changed
             )
+            # Restore main topmost when settings closes
+            def _restore_topmost():
+                if self.settings.get_always_on_top():
+                    self.ui.root.attributes('-topmost', True)
+            settings_window.window.bind('<Destroy>',
+                lambda e, w=settings_window.window: _restore_topmost() if e.widget is w else None)
         except Exception as e:
             print(f"Settings window error: {e}")
             self.ui.update_status(f"Settings error: {str(e)}")
