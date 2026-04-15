@@ -29,9 +29,10 @@ class DownloaderWindow:
         # Create window
         self.window = tk.Toplevel(parent) if parent else tk.Tk()
         self.window.title("v3_PTT Model Downloader")
-        self.window.geometry("500x680")  # Much taller to ensure buttons are visible
+        self.window.geometry("720x640")  # Match main window size
+        self.window.minsize(500, 500)
         self.window.configure(bg='#1a1a1a')
-        self.window.resizable(False, False)
+        self.window.resizable(True, True)
         
         if parent:
             self.window.attributes('-topmost', True)
@@ -87,20 +88,20 @@ class DownloaderWindow:
         parent_w = self.parent.winfo_width()
         parent_h = self.parent.winfo_height()
         
-        x = parent_x + (parent_w // 2) - 250  # 250 = half window width
-        y = parent_y + (parent_h // 2) - 340  # 340 = half window height
+        x = parent_x + (parent_w // 2) - 360  # 250 = half window width
+        y = parent_y + (parent_h // 2) - 320  # 340 = half window height
         
-        self.window.geometry(f"500x680+{x}+{y}")
+        self.window.geometry(f"720x640+{x}+{y}")
     
     def _center_on_screen(self):
         """Center window on screen"""
         screen_width = self.window.winfo_screenwidth()
         screen_height = self.window.winfo_screenheight()
         
-        x = (screen_width // 2) - 250
-        y = (screen_height // 2) - 340
+        x = (screen_width // 2) - 360
+        y = (screen_height // 2) - 320
         
-        self.window.geometry(f"500x680+{x}+{y}")
+        self.window.geometry(f"720x640+{x}+{y}")
     
     def _create_widgets(self):
         """Create all GUI widgets"""
@@ -131,17 +132,16 @@ class DownloaderWindow:
                                fg='#666666', bg='#1a1a1a', font=('Arial', 7))
         legend_label.pack(pady=(0, 10))
         
-        # Model selection frame
+        # Reserve buttons + progress at the bottom FIRST so they are never
+        # clipped off-screen no matter how tall the model list grows.
+        bottom_frame = tk.Frame(main_frame, bg='#1a1a1a')
+        bottom_frame.pack(side='bottom', fill='x')
+        self._create_progress_section(bottom_frame)
+        self._create_buttons(bottom_frame)
+
+        # Then fill the remaining space with the (scrollable) model lists.
         self._create_model_selection(main_frame)
-        
-        # Custom models section (read-only)
         self._create_custom_models_section(main_frame)
-        
-        # Progress section
-        self._create_progress_section(main_frame)
-        
-        # Buttons
-        self._create_buttons(main_frame)
     
     def _create_model_selection(self, parent):
         """Create model selection checkboxes with scrolling"""
@@ -350,9 +350,9 @@ class DownloaderWindow:
         clear_all_btn.pack(side='left', padx=5)
         
         # Download button
-        self.download_btn = tk.Button(button_frame, text="Download Selected",
+        self.download_btn = tk.Button(button_frame, text="Download",
                                      fg='white', bg='#28a745', font=('Arial', 9, 'bold'),
-                                     width=15, height=2, command=self._start_download)
+                                     width=12, height=2, command=self._start_download)
         self.download_btn.pack(side='right', padx=5)
         
         # Close button
@@ -411,7 +411,7 @@ class DownloaderWindow:
         
         # Start download in separate thread
         self.is_downloading = True
-        self.download_btn.config(state='disabled', text="Downloading...")
+        self.download_btn.config(state='disabled', text="Downloading…")
         self.download_thread = threading.Thread(target=self._download_models, 
                                                args=(selected,), daemon=True)
         self.download_thread.start()
@@ -455,7 +455,7 @@ class DownloaderWindow:
                     print(f"Error in downloads complete callback: {e}")
         
         self.is_downloading = False
-        self.download_btn.config(state='normal', text="Download Selected")
+        self.download_btn.config(state='normal', text="Download")
         
         # Update model status
         self.window.after(1000, self._update_model_status)

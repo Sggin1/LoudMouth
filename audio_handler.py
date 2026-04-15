@@ -66,8 +66,8 @@ class AudioHandler:
                     self._load_local_model(model_size)
                 
                 self._update_status(f"✅ {model_size} model ready")
-                print(f"Whisper model '{model_size}' loaded with CPU/FP32 configuration")
-                
+                print(f"Whisper model '{model_size}' loaded on {_DEVICE.upper()} ({'FP16' if _USE_FP16 else 'FP32'})")
+
             except Exception as e:
                 self._handle_model_error(e)
         
@@ -87,7 +87,7 @@ class AudioHandler:
                 self._load_local_model(model_size)
             
             self._update_status(f"✅ {model_size} model ready")
-            print(f"Whisper model '{model_size}' loaded with CPU/FP32 configuration")
+            print(f"Whisper model '{model_size}' loaded on {_DEVICE.upper()} ({'FP16' if _USE_FP16 else 'FP32'})")
             
         except Exception as e:
             self._handle_model_error(e)
